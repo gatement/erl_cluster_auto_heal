@@ -1,0 +1,14 @@
+{application, test_erl_app,
+ [
+  {description, ""},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { test_erl_app_app, []}},
+  {env, [
+
+  ]}
+ ]}.

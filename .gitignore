@@ -1,0 +1,5 @@
+.vagrant
+.rebar
+ebin
+*.beam
+*.deb
