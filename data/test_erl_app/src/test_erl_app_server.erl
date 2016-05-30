@@ -5,7 +5,7 @@
 -export([start_link/0
          ,print_status/0
          ,get_status/0
-         ,get_connected_nodes/0
+         ,get_configured_nodes/0
          ,get_disconnected_nodes/0
          ,get_majority_count/0
         ]).
@@ -43,7 +43,7 @@ handle_call(_Request, _From, State) ->
     {ok, Reply, State}.
     
 handle_cast(print_status, State) ->
-    io:format("current status: ~p~nmajority count: ~p~nconnected nodes: ~p~ndisconnected nodes: ~p~n", [State#state.status, get_majority_count(), get_connected_nodes(), get_disconnected_nodes()]), 
+    io:format("current status: ~p~nmajority count: ~p~nconnected nodes: ~p~ndisconnected nodes: ~p~n", [State#state.status, get_majority_count(), [erlang:node() | erlang:nodes()], get_disconnected_nodes()]), 
     {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}. 
@@ -115,25 +115,26 @@ get_status() ->
     case DisconnectedNodeCount of
         0 -> all;
         _ ->
-            ConnectedNodeCount = erlang:length(get_connected_nodes()),
+            ConfiguredNodeCount = erlang:length(get_configured_nodes()),
             MajorityCount = get_majority_count(),
             if
-                ConnectedNodeCount >= MajorityCount -> majority;
+                (ConfiguredNodeCount - DisconnectedNodeCount) >= MajorityCount -> majority;
                 true -> minority
             end
     end.
 
-get_connected_nodes() ->
-    [erlang:node() | erlang:nodes()].
+get_configured_nodes() ->
+    {ok, ConfiguredNodes} = application:get_env(mnesia, extra_db_nodes),
+    ConfiguredNodes.
 
 get_disconnected_nodes() ->
-    CurrentNodes = get_connected_nodes(),
-    {ok, ConfigedNodes} = application:get_env(mnesia, extra_db_nodes),
-    lists:subtract(ConfigedNodes, CurrentNodes).
+    ConfiguredNodes = get_configured_nodes(),
+    CurrentNodes = [erlang:node() | erlang:nodes()],
+    lists:subtract(ConfiguredNodes, CurrentNodes).
 
 get_majority_count() ->
-    {ok, ConfigedNodes} = application:get_env(mnesia, extra_db_nodes),
-    (erlang:length(ConfigedNodes) div 2) + 1.
+    ConfiguredNodes = get_configured_nodes(),
+    (erlang:length(ConfiguredNodes) div 2) + 1.
 
 ping_disconnected_nodes() ->
     DisconnectedNodes = get_disconnected_nodes(),
