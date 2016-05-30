@@ -88,14 +88,19 @@ handle_nodeup(NodeName, State) ->
             %% restart if recover from minority
             case {OldStatus, NewStatus} of
                 {minority, majority} ->
-                    io:format("node ~p are about to restart because node status changed from '~p' to '~p'~n", 
+                    io:format("node ~p are about to restart mnesia because node status changed from '~p' to '~p'~n", 
                               [erlang:node(), OldStatus, NewStatus]),
                     init:restart();
+                    %mnesia:stop(),
+                    %mnesia:start(),
+                    %mnesia:change_config(extra_db_nodes, [NodeName]);
                 {minority, all} ->
-                    io:format("node ~p are about to restart because node status changed from '~p' to '~p'~n", 
+                    io:format("node ~p are about to restart mnesia because node status changed from '~p' to '~p'~n", 
                               [erlang:node(), OldStatus, NewStatus]),
-
                     init:restart();
+                    %mnesia:stop(),
+                    %mnesia:start(),
+                    %mnesia:change_config(extra_db_nodes, [NodeName]);
                 _ ->
                     do_nothing
             end,
