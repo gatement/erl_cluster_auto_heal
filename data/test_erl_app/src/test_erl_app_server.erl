@@ -34,9 +34,8 @@ print_status() ->
 %% gen_server callbacks
 %% ===================================================================
 init([]) ->
-    net_kernel:monitor_nodes(true, [nodedown_reason]),
     erlang:send_after(10000, erlang:self(), ping_disconnected_nodes),
-    {ok, #state{status=startup}}.
+    {ok, #state{status=startup}, 20000}.
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
@@ -45,6 +44,7 @@ handle_call(_Request, _From, State) ->
 handle_cast(print_status, State) ->
     io:format("current status: ~p~nmajority count: ~p~nconnected nodes: ~p~ndisconnected nodes: ~p~n", [State#state.status, get_majority_count(), [erlang:node() | erlang:nodes()], get_disconnected_nodes()]), 
     {noreply, State};
+
 handle_cast(_Msg, State) ->
     {noreply, State}. 
 
@@ -55,6 +55,10 @@ handle_info({nodeup, NodeName, _InfoList}, State) ->
 handle_info({nodedown, NodeName, [{nodedown_reason, Reason}]}, State) ->
     State2 = handle_nodedown(NodeName, Reason, State),
     {noreply, State2};
+
+handle_info(timeout, State) ->
+    net_kernel:monitor_nodes(true, [nodedown_reason]),
+    {noreply, State};
 
 handle_info(ping_disconnected_nodes, State) ->
     ping_disconnected_nodes(),
@@ -91,16 +95,10 @@ handle_nodeup(NodeName, State) ->
                     io:format("node ~p are about to restart mnesia because node status changed from '~p' to '~p'~n", 
                               [erlang:node(), OldStatus, NewStatus]),
                     init:restart();
-                    %mnesia:stop(),
-                    %mnesia:start(),
-                    %mnesia:change_config(extra_db_nodes, [NodeName]);
                 {minority, all} ->
                     io:format("node ~p are about to restart mnesia because node status changed from '~p' to '~p'~n", 
                               [erlang:node(), OldStatus, NewStatus]),
                     init:restart();
-                    %mnesia:stop(),
-                    %mnesia:start(),
-                    %mnesia:change_config(extra_db_nodes, [NodeName]);
                 _ ->
                     do_nothing
             end,
@@ -144,6 +142,5 @@ get_majority_count() ->
 ping_disconnected_nodes() ->
     DisconnectedNodes = get_disconnected_nodes(),
     lists:foreach(fun(Node) -> 
-                      %io:format("[~p] start ping ~p~n", [erlang:localtime(), Node]),
                       net_adm:ping(Node)
                   end, DisconnectedNodes).
